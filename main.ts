@@ -48,33 +48,38 @@ export default class AutoNoteMover extends Plugin {
 			const fileFullName = file.basename + '.' + file.extension;
 			const settingsLength = folderTagPattern.length;
 			const cacheTag = getAllTags(fileCache);
+			console.log('All tags:', cacheTag);
+			if (cacheTag && cacheTag.length > 0) {
+				console.log('First tag:', cacheTag[0]);
+			}
 
-			// checker
-			for (let i = 0; i < settingsLength; i++) {
-				const settingFolder = folderTagPattern[i].folder;
-				const settingTag = folderTagPattern[i].tag;
-				const settingPattern = folderTagPattern[i].pattern;
-				// Tag check
-				if (!settingPattern) {
-					if (!this.settings.use_regex_to_check_for_tags) {
-						if (cacheTag.find((e) => e === settingTag)) {
-							fileMove(this.app, settingFolder, fileFullName, file);
-							break;
+			// checker - only use first tag
+			if (cacheTag && cacheTag.length > 0) {
+				const firstTag = cacheTag[0];
+				for (let i = 0; i < settingsLength; i++) {
+					const settingFolder = folderTagPattern[i].folder;
+					const settingTag = folderTagPattern[i].tag;
+					const settingPattern = folderTagPattern[i].pattern;
+					
+					if (!settingPattern) { // Tag-based matching
+						let matchFound = false;
+						if (!this.settings.use_regex_to_check_for_tags) {
+							matchFound = firstTag === settingTag;
+						} else {
+							const regex = new RegExp(settingTag);
+							matchFound = regex.test(firstTag);
 						}
-					} else if (this.settings.use_regex_to_check_for_tags) {
-						const regex = new RegExp(settingTag);
-						if (cacheTag.find((e) => regex.test(e))) {
+						
+						if (matchFound) {
 							fileMove(this.app, settingFolder, fileFullName, file);
-							break;
+							return; // Exit completely after first match
 						}
-					}
-					// Title check
-				} else if (!settingTag) {
-					const regex = new RegExp(settingPattern);
-					const isMatch = regex.test(fileName);
-					if (isMatch) {
-						fileMove(this.app, settingFolder, fileFullName, file);
-						break;
+					} else if (!settingTag) { // Title pattern matching
+						const regex = new RegExp(settingPattern);
+						if (regex.test(fileName)) {
+							fileMove(this.app, settingFolder, fileFullName, file);
+							return; // Exit completely after first match
+						}
 					}
 				}
 			}
